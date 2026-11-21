@@ -1,6 +1,7 @@
 import re
 import unittest
 from importlib.util import find_spec
+from unittest.mock import patch
 
 
 @unittest.skipUnless(find_spec("pl_core_news_md"), "Test wymaga polskiego modelu z obrazu Docker")
@@ -55,6 +56,27 @@ class AnonymizationTest(unittest.TestCase):
         self.assertEqual(mapping["[NR_TRANSAKCJI_1]"], "CEN2612345678901")
         self.assertEqual(text.count("[NR_TRANSAKCJI_1]"), 2)
         self.assertIn("Numer referencyjny\n[NR_TRANSAKCJI_1]", text)
+
+    def test_bank_status_label_survives_overlapping_organization_detection(self):
+        from presidio_analyzer import RecognizerResult
+
+        number = "CEN2612345678901"
+        for status_field in ("Status\nWykonany", "Status: Zrealizowano", "STATUS .... Przelew zrealizowany"):
+            with self.subTest(status_field=status_field):
+                source = f"Tytułem\nOpłata {number}\n{status_field}\nOdbiorca:\nStatus"
+                number_start = source.index(number)
+                label_end = source.index(status_field) + len("Status")
+                company_start = source.rindex("Status")
+                matches = [
+                    RecognizerResult("PL_TRANSAKCJA", number_start, number_start + len(number), 1.0),
+                    RecognizerResult("ORGANIZATION", number_start, label_end, 0.85),
+                    RecognizerResult("ORGANIZATION", company_start, len(source), 0.85),
+                ]
+                with patch.object(self.analyzer, "analyze", return_value=matches):
+                    text, mapping = self.mask(source)
+                self.assertIn(f"[NR_TRANSAKCJI_1]\n{status_field}", text)
+                self.assertTrue(text.endswith("Odbiorca:\n[PODMIOT_1]"))
+                self.assertEqual(mapping, {"[NR_TRANSAKCJI_1]": number, "[PODMIOT_1]": "Status"})
 
     def test_professional_registrations_are_masked(self):
         text, mapping = self.mask(
