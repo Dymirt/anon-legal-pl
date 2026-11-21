@@ -247,6 +247,8 @@ _NAGLOWKI = re.compile(
     rf"|{_ETYKIETA_SPRAWY}|{_ETYKIETA_TRANSAKCJI}|{_ETYKIETA_RACHUNKU}"
     r"|numer (?:publikacji )?ogłoszenia|KRS|NIP|REGON|miejscowość)(?=[ \t]*:|[ \t]*$)"
     rf"|^[ \t]*(?P<tytul_dokumentu>{_TYTUL_DOKUMENTU}){_KONIEC_NAGLOWKA}"
+    r"|^[ \t]*(?P<etykieta_przelewu>nr\.?[ \t]+ref\.?(?:[ \t]+operacji)?|typ[ \t]+operacji)"
+    r"(?=[ \t]*(?::|\.{2,}|\r?$))"
     r"|^[ \t]*(?P<status_przelewu>status)(?=(?:[ \t]*:?[ \t]*\r?\n[ \t]*|[ \t:.]+)"
     r"(?:przelew[ \t]+)?(?:wykonany|zrealizowano|zrealizowany)[ \t.]*\r?$)"
     r"|^[ \t]*(?P<numeracja>\d{1,2}(?:\.\d{1,2}){1,5}\.?)(?=[ \t]|$)",

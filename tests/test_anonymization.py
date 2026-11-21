@@ -78,6 +78,27 @@ class AnonymizationTest(unittest.TestCase):
                 self.assertTrue(text.endswith("Odbiorca:\n[PODMIOT_1]"))
                 self.assertEqual(mapping, {"[NR_TRANSAKCJI_1]": number, "[PODMIOT_1]": "Status"})
 
+    def test_transfer_reference_and_operation_type_labels_survive_organization_detection(self):
+        from presidio_analyzer import RecognizerResult
+
+        company = "Typ Operacji sp. z o.o."
+        for field in (
+            "Nr ref.", "Nr ref.: CEN2612345678901", "NR REF. ........ CEN2612345678901",
+            "Nr ref. operacji: CEN2612345678901", "Typ operacji",
+            "Typ operacji: Przelew zwykły", "TYP OPERACJI ........ Przelew zwykły",
+        ):
+            with self.subTest(field=field):
+                source = f"{field}\n{company}"
+                company_start = len(field) + 1
+                matches = [
+                    RecognizerResult("ORGANIZATION", 0, len(field.split()[0]), 0.85),
+                    RecognizerResult("ORGANIZATION", company_start, len(source), 0.85),
+                ]
+                with patch.object(self.analyzer, "analyze", return_value=matches):
+                    text, mapping = self.mask(source)
+                self.assertEqual(text, f"{field}\n[PODMIOT_1]")
+                self.assertEqual(mapping, {"[PODMIOT_1]": company})
+
     def test_professional_registrations_are_masked(self):
         text, mapping = self.mask(
             "adw. Anna Kowalska (nr wpisu na listę: WA 12345)\n"
